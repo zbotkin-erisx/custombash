@@ -1,0 +1,963 @@
+
+PATH="$HOME/bin:$PATH"
+PROJECTS_DIR="$HOME/projects"
+PERSONAL_PROJECTS_DIR="$HOME/PersonalProjects"
+MONGO_SCRIPT_DIR="$HOME/MongoScripts"
+NOTES_DIR="$HOME/Notes"
+VPN_DIR="$HOME/vpn"
+ISSUES_DIR="$HOME/Issues"
+BOILERPLATE_DIR="$HOME/BoilerplateStuff"
+TEST_CORE_FILES_DIR="$HOME/TestCoreFiles"
+
+EMAIL_LINK="https://mail.google.com/mail"
+CALENDAR_LINK="https://calendar.google.com/calendar"
+GITHUB_LINK="https://github.com/ErisExchange"
+JIRA_LINK="https://erisdigital.atlassian.net"
+MARGIN_EXAMPLES_LINK="https://docs.google.com/spreadsheets/d/12yQ48N4h4TL2Q_Dk5fh4U5cXGU1iSGVdBxMDd9ZRi5E/edit"
+SPRINT_LINK="https://erisdigital.atlassian.net/secure/RapidBoard.jspa?rapidView=6"
+STANDUP_NOTES_LINK="https://docs.google.com/document/d/1Dh8jLhSfk-cc4bASR8-90lQu4-C4EjGLhGb-3mSkIuA/edit#heading=h.butnv2blwar7"
+STANDUP_MEETING_LINK="https://meet.google.com/mxj-shyr-brz?authuser=0"
+
+alias browser-shortcut='google-chrome'
+alias bex="bundle exec"
+alias bexr="bundle exec rspec"
+alias gitd='git diff'
+alias gitl='git log'
+alias gits='git status'
+
+
+## mispellings
+alias celar="clear"
+alias ckear="clear"
+alias re-soruce="re-source"
+alias re-souce="re-source"
+
+function dev-vpn() {
+	sudo openvpn --config $VPN_DIR/dev.ovpn
+}
+function test-vpn() {
+	sudo openvpn --config $VPN_DIR/test.ovpn
+}
+function nr-vpn() {
+	sudo openvpn --config $VPN_DIR/nr.ovpn
+}
+function prod-vpn() {
+	sudo openvpn --config $VPN_DIR/prod.ovpn
+}
+function marketops-vpn() {
+	sudo openvpn --config $VPN_DIR/marketops.ovpn
+}
+
+function note() {
+	if [ -z $1 ];
+	then
+		currentDate=`date +"%Y%m%d"`
+		currentFile="$NOTES_DIR/$currentDate.txt"
+		touch $currentFile
+		vim $currentFile
+	else
+		filename="$NOTES_DIR/$1.txt"
+		if [ -f "$filename" ]; then
+			vim $filename
+		else
+			echo "no such file \"$filename\""
+		fi
+	fi
+}
+
+function notes() {
+	if [ -z $1 ]; then
+		note
+	else
+		note $1
+	fi
+}
+
+function start-all() {
+	~/bin/mongo-start
+	~/bin/rabbit-start
+}
+
+function stop-all() {
+	~/bin/mongo-stop
+	~/bin/rabbit-stop
+}
+
+function source-all-envs() {
+	. ~/bin/env-auth0-dev-test
+	. ~/bin/env-ftp-local
+	. ~/bin/env-mongo-dev
+}
+function unsource-all-envs() {
+  . ~/bin/unenv-auth0
+  . ~/bin/unenv-ftp
+  . ~/bin/unenv-mongo
+}
+
+function rabbit-dev() {
+  RABBIT_HOST=dev-va-rabbitmq-a1
+}
+
+function mongo-dev() {
+  if [[ -z $1 ]]
+  then
+	  mongo --host dev-va-mongodb-a1.erisx:27017 \
+	  --username dev_svc \
+	  --password zakishoodieman \
+	  --authenticationDatabase admin
+  else
+    if [[ -f "$1" ]]
+    then
+	    mongo --host dev-va-mongodb-a1.erisx:27017 \
+	    --username dev_svc \
+	    --password zakishoodieman \
+	    --authenticationDatabase admin < "$1"
+    else
+      echo "Query file $1 does not exist!"
+    fi
+  fi
+}
+
+function build-models() {
+  REPO_NAME=
+  while [ "$1" != "" ]
+  do
+    case $1 in
+      -r | --repo)
+      REPO_NAME="$2"
+      shift
+      shift
+      ;;
+    esac
+  done
+  REPO_DIR="$PROJECTS_DIR/$REPO_NAME"
+  if [[ $REPO_NAME == "" ]]
+  then
+    echo "Need a repo"
+  elif [[ ! -d $REPO_DIR ]]
+  then
+    echo "$REPO_DIR does not exist. Create it with mono-repo"
+  else
+    cd "$REPO_DIR/Common.rb/eris_models_core/ext/java/"
+    rake
+    cd "$REPO_DIR/Common.rb"
+    for i in `find . -maxdepth 2 -name ext`
+    do
+      echo "Building native extensions for ${i}..."
+      (cd $i/*; rake)
+    done
+  fi
+}
+
+function run-clearing-service() {
+
+  REPO_NAME=
+  INSTALL="no"
+  while [ "$1" != "" ]
+  do
+    case $1 in
+      -r | --repo)
+      REPO_NAME="$2"
+      shift
+      shift
+      ;;
+      -b | --build | -i | --install)
+      INSTALL="yes"
+      shift
+      ;;
+    esac
+  done
+
+  REPO_DIR="$PROJECTS_DIR/$REPO_NAME"
+
+  if [[ $REPO_NAME == "" ]]
+  then
+    echo "Need a repo to run"
+  elif [[ ! -d "$REPO_DIR" ]]
+  then
+    echo "$REPO_DIR does not exist. Create it with mono-repo"
+  else
+    cd "$PROJECTS_DIR/$REPO_NAME/ClearingSystem"
+    if [[ $INSTALL == "yes" ]]
+    then
+      bundle install
+    fi
+    ./bin/clearing_system.rb
+  fi
+
+}
+
+function run-clearing-admin-frontend() {
+
+  REPO_NAME=
+  JENKINS_BUILD="no"
+  YARN_BUILD="no"
+  while [ "$1" != "" ]
+  do
+    case $1 in
+      -r | --repo)
+      REPO_NAME="$2"
+      shift
+      shift
+      ;;
+      -i | --install | --jenkins-build)
+      JENKINS_BUILD="yes"
+      shift
+      ;;
+      -b | --build | --yarn-build)
+      YARN_BUILD="yes"
+      shift
+      ;;
+    esac
+  done
+
+  REPO_DIR="$PROJECTS_DIR/$REPO_NAME"
+
+  if [[ $REPO_NAME == "" ]]
+  then
+    echo "Need a repo to run"
+  elif [[ ! -d "$REPO_DIR" ]]
+  then
+    echo "$REPO_DIR does not exist. Create it with mono-repo"
+  else
+    cd "$PROJECTS_DIR/$REPO_NAME/ClearingAdminUI"
+  	# bash ~/.asdf/plugins/nodejs/bin/import-release-team-keyring
+    if [[ $JENKINS_BUILD == "yes" ]]
+    then
+	    .jenkins/build
+    fi
+    if [[ $YARN_BUILD == "yes" ]]
+    then
+	    yarn run build:client
+    fi
+	  yarn run start:server
+  fi
+
+}
+
+function run-clearing-portal-frontend() {
+  REPO_NAME=
+  JENKINS_BUILD="no"
+  YARN_BUILD="no"
+  while [ "$1" != "" ]
+  do
+    case $1 in
+      -r | --repo)
+      REPO_NAME="$2"
+      shift
+      shift
+      ;;
+      -i | --jenkins-build | --install)
+      JENKINS_BUILD="yes"
+      shift
+      ;;
+      -b | --yarn-build | --build)
+      YARN_BUILD="yes"
+      shift
+      ;;
+    esac
+  done
+
+  REPO_DIR="$PROJECTS_DIR/$REPO_NAME"
+  if [[ $REPO_NAME == "" ]]
+  then
+    echo "Need a repo to run"
+  elif [[ ! -d "$REPO_DIR" ]]
+  then
+    echo "$REPO_DIR does not exist. Create it with mono-repo"
+  else
+    cd "$PROJECTS_DIR/$REPO_NAME/ClearingPortal"
+  	# bash ~/.asdf/plugins/nodejs/bin/import-release-team-keyring
+    if [[ $JENKINS_BUILD == "yes" ]]
+    then
+	    .jenkins/build
+    fi
+    if [[ $YARN_BUILD == "yes" ]]
+    then
+	    yarn run build:client
+    fi
+	  yarn run start:server
+  fi
+}
+
+function to-pascal-case() {
+  if [[ -z "$1" ]]
+  then
+    echo "Need an argument"
+  else
+    echo $1 | sed -r 's/(^|_)([a-z])/\U\2/g'
+  fi
+}
+
+function run-statement-generator() {
+
+  REPO_NAME=
+  INSTALL="no"
+  TASK_NAME="generate_statements"
+  TASK_DATE="2020-09-03"
+  while [ "$1" != "" ]
+  do
+    case $1 in
+      -r | --repo)
+      REPO_NAME="$2"
+      shift
+      shift
+      ;;
+      -i | --install)
+      INSTALL="yes"
+      shift
+      ;;
+      -t | --task)
+      TASK_NAME="$2"
+      shift
+      shift
+      ;;
+      -d | --date)
+      TASK_DATE="$2"
+      shift
+      shift
+      ;;
+    esac
+  done
+
+  REPO_DIR="$PROJECTS_DIR/$REPO_NAME"
+  if [[ $REPO_NAME == "" ]]
+  then
+    echo "Need a repo to run"
+  elif [[ ! -d "$REPO_DIR" ]]
+  then
+    echo "$REPO_DIR does not exist. Create it with mono-repo"
+  else
+	  cd "$REPO_DIR/StatementGenerator"
+    if [[ $INSTALL == "yes" ]]
+    then
+      bundle install
+    fi
+    if [[ $TASK_NAME == "tcr_report" ]]
+    then
+      TASK_NAME_PASCAL="TCRReport"
+    else
+      TASK_NAME_PASCAL=`to-pascal-case $TASK_NAME`
+    fi
+    TASK_MODULE_NAME="Eris::Statements::$TASK_NAME_PASCAL"
+    EXEC_TEXT="load './lib/tasks/$TASK_NAME.rb';\
+    task=$TASK_MODULE_NAME::Task.new(date: \"$TASK_DATE\");\
+    task.run"
+	  bundle exec pry --exec "$EXEC_TEXT"
+  fi
+
+}
+
+## make this more into a function later i guess
+function nomad-stuff() {
+	export NOMAD_ADDR=http://tst-va-nomad-a1:4646
+	nomad status
+	nomad job status statementgenerator
+	nomad alloc logs 34c82290
+	nomad alloc logs -f 34c82290
+	nomad alloc logs 34c82290 | grep Ping 
+	nomad alloc logs 34c82290 | grep 1604069712
+	nomad status
+	export NOMAD_ADDR=http://tst-va-nomad-a1:4646
+	nomad status
+	nomad job status tradeapi
+	nomad alloc logs a53d07a6
+	nomad alloc logs a53d07a6 | grep -v INFO
+	nomad alloc logs -f a53d07a6
+	nomad alloc logs -f a53d07a6 | grep WARN
+}
+
+#
+#
+#	various 'book-marked' pages for command line access
+#
+#
+
+function email() {
+	browser-shortcut "$EMAIL_LINK"
+}
+
+function calendar() {
+	browser-shortcut "$CALENDAR_LINK"
+}
+
+function standup() {
+  browser-shortcut "$STANDUP_MEETING_LINK"
+}
+
+function standup-notes() {
+	browser-shortcut "$STANDUP_NOTES_LINK"
+}
+
+function github() {
+
+  BRANCH_NAME=
+  PROJECT_NAME=
+  USE_CURRENT="no"
+  while [ "$1" != "" ]
+  do
+    case $1 in
+      -b | --branch)
+      BRANCH_NAME="$2"
+      shift
+      shift
+      ;;
+      -p | --project)
+      PROJECT_NAME="$2"
+      shift
+      shift
+      ;;
+      -c | --current)
+      USE_CURRENT="yes"
+      shift
+      ;;
+    esac
+  done
+
+  if [[ $USE_CURRENT ]]
+  then
+    CURRENT_DIR=`pwd`
+    if [[ "$CURRENT_DIR" == *"ClearingSystem"* ]]
+    then
+      PROJECT_NAME="ClearingSystem"
+    elif [[ "$CURRENT_DIR" == *"ClearingAdminUI"* ]]
+    then
+      PROJECT_NAME="ClearingAdminUI"
+    elif [[ "$CURRENT_DIR" == *"ClearingPortal"* ]]
+    then
+      PROJECT_NAME="ClearingPortal"
+    elif [[ "$CURRENT_DIR" == *"StatementGenerator"* ]]
+    then
+      PROJECT_NAME="StatementGenerator"
+    elif [[ "$CURRENT_DIR" == *"Common.rb"* ]]
+    then
+      PROJECT_NAME="Common.rb"
+    else
+      echo "Cannot decipher project name from current path"
+      PROJECT_NAME=
+    fi
+    BRANCH_NAME=`git branch --show-current`
+  fi
+
+  if [[ $BRANCH_NAME == "master" ]]
+  then
+    BRANCH_NAME=
+  fi
+
+	if [[ $PROJECT_NAME == "" ]]
+  then
+		echo "No args"
+		browser-shortcut "$GITHUB_LINK"
+	else
+    if [[ $BRANCH_NAME ]]
+    then
+      browser-shortcut "$GITHUB_LINK/$PROJECT_NAME/tree/$BRANCH_NAME"
+    else
+		  browser-shortcut "$GITHUB_LINK/$PROJECT_NAME"
+    fi
+	fi
+}
+alias gh="github"
+
+function local-clearing-admin() {
+	browser-shortcut "http://localhost:3001"
+}
+function local-clearing-portal() {
+  if [[ -z "$1" ]]
+  then
+    browser-shortcut "http://localhost:3002"
+  else
+    browser-shortcut "http://localhost:3002/$1"
+  fi
+}
+
+function jira() {
+	if [[ -z $1 ]]
+  then
+		echo "No args"
+		browser-shortcut "$JIRA_LINK"
+	else
+		browser-shortcut "$JIRA_LINK/browse/CO-$1"
+	fi
+}
+
+function margin-examples() {
+	browser-shortcut "$MARGIN_EXAMPLES_LINK"
+}
+
+function sprint() {
+  browser-shortcut "$SPRINT_LINK"
+}
+
+## work in progress
+OPEN_ISSUES_FILE="$ISSUES_DIR/open-issues.txt" 
+function open-issues() {
+	cat $OPEN_ISSUES_FILE
+}
+
+function current-issue() {
+	jira `open-issues`
+}
+
+function find-replace() {
+  if [[ -z $1 ]]
+  then
+    echo "Need a find"
+  elif [[ -z $2 ]]
+  then
+    echo "Need a replace"
+  else
+    grep -RiIl "$1" | xargs sed -i "s/$1/$2/g"
+  fi
+}
+
+function mono-repo() {
+
+  FEATURE_OR_BUG="f"
+  TICKET_NUMBER=
+  DESCRIPTION=
+  REPO_NAME=
+  BASE_BRANCH=
+
+  while [ "$1" != "" ]; do
+    case $1 in 
+      -b | --bug)
+      FEATURE_OR_BUG="b"
+      shift
+      ;;
+      -t | --ticket)
+      TICKET_NUMBER="$2"
+      shift
+      shift
+      ;;
+      -d | --description)
+      DESCRIPTION="$2"
+      shift
+      shift
+      ;;
+      -r | --repo-name)
+      REPO_NAME="$2"
+      shift
+      shift
+      ;;
+      --base-branch)
+      BASE_BRANCH="$2"
+      shift
+      shift
+      ;;
+    esac
+  done
+
+  if [[ $TICKET_NUMBER == "" ]]
+  then
+    echo "Need a jira ticket number"
+  elif [[ $DESCRIPTION == "" ]]
+  then
+    echo "Need a ticket description"
+  else
+    BRANCH_NAME="$FEATURE_OR_BUG/CO$TICKET_NUMBER/$DESCRIPTION"
+    if [[ $REPO_NAME == "" ]]
+    then
+      REPO_NAME=$TICKET_NUMBER
+    fi
+    if [[ $BASE_BRANCH == "" ]]
+    then
+      BASE_BRANCH="master"
+    fi
+    mono-helper $BRANCH_NAME $REPO_NAME $BASE_BRANCH
+  fi
+
+}
+
+function mono-helper() {
+
+  BRANCH_NAME="$1"
+  REPO_NAME="$2"
+  BASE_BRANCH="$3"
+  SUB_DIR="$PROJECTS_DIR/$REPO_NAME"
+
+  if [[ -d $SUB_DIR ]]
+  then
+    echo "$SUB_DIR already exists!"
+  else
+    mkdir $SUB_DIR
+    mono-helper-dos "$SUB_DIR" "ClearingAdminUI" "$BASE_BRANCH" "$BRANCH_NAME"
+    mono-helper-dos "$SUB_DIR" "ClearingPortal" "$BASE_BRANCH" "$BRANCH_NAME"
+    mono-helper-dos "$SUB_DIR" "ClearingSystem" "$BASE_BRANCH" "$BRANCH_NAME"
+    mono-helper-dos "$SUB_DIR" "Digital.rb" "$BASE_BRANCH" "$BRANCH_NAME"
+    mono-helper-dos "$SUB_DIR" "Common.rb" "$BASE_BRANCH" "$BRANCH_NAME"
+    mono-helper-dos "$SUB_DIR" "IntegrationFixtures" "$BASE_BRANCH" "$BRANCH_NAME"
+    mono-helper-dos "$SUB_DIR" "StatementGenerator" "$BASE_BRANCH" "$BRANCH_NAME"
+    mono-helper-dos "$SUB_DIR" "ErisXKit" "$BASE_BRANCH" "$BRANCH_NAME"
+    mono-helper-dos "$SUB_DIR" "eris_nomad" "$BASE_BRANCH" "$BRANCH_NAME"
+  fi
+}
+
+function mono-helper-dos() {
+    cd "$1"
+    git clone "git@github.com:ErisExchange/$2.git"
+    cd "$1/$2"
+    git pull origin "$3"
+    git checkout -b "$4"
+    cd "$1"
+}
+
+function projects () {
+	if [ -z $1 ]
+  then
+		cd "$PROJECTS_DIR"
+	else
+		cd "$PROJECTS_DIR/$1"
+	fi
+}
+
+function quick-test() {
+
+  RUBY_PROJECT="yes"
+  JS_PROJECT="no"
+  NAME="test"
+  GEMFILE="ClearingSystemGemfile"
+  TOOL_VERSIONS_FILE=".clearing-system-tool-versions"
+  INITIAL_RB_TEST_FILE="ClearingSystem.rb"
+  while [ "$1" != "" ]
+  do
+    case $1 in
+      -r | --ruby)
+      RUBY_PROJECT="yes"
+      JS_PROJECT="no"
+      shift
+      ;;
+      -j | --javascript)
+      RUBY_PROJECT="no"
+      JS_PROJECT="yes"
+      shift
+      ;;
+      -n | --name)
+      NAME="$2"
+      shift
+      shift
+      ;;
+    esac
+  done
+
+  NEWPROJECT_DIR="$PERSONAL_PROJECTS_DIR/$NAME" 
+  if [[ -d $NEWPROJECT_DIR ]]
+  then
+    echo "project found at $NEWPROJECT_DIR"
+    echo "deleting"
+    rm -rf $NEWPROJECT_DIR
+  fi
+  mkdir $NEWPROJECT_DIR
+  cd $NEWPROJECT_DIR
+  if [[ $RUBY_PROJECT == "yes" ]]
+  then
+    cp "$BOILERPLATE_DIR/$GEMFILE" "Gemfile"
+    cp "$BOILERPLATE_DIR/$TOOL_VERSIONS_FILE" ".tool-versions"
+    cp "$BOILERPLATE_DIR/$INITIAL_RB_TEST_FILE" "$NEWPROJECT_DIR/test.rb"
+    chmod +x "$NEWPROJECT_DIR/test.rb"
+  fi
+  if [[ $JS_PROJECT == "yes" ]]
+  then
+    touch package.json
+    echo "Come back and do this when i need to"
+  fi
+}
+
+function core-files() {
+
+  INSTALL="no"
+  TEST_CORE_FILE="DirectMemberReport.csv"
+  TEST_CORE_FILE="$TEST_CORE_FILE_DIR/$TEST_CORE_FILE"
+
+  while [[ $1 != "" ]]
+  do
+    case $1 in
+      -i | --install)
+      INSTALL="yes"
+      shift
+      ;;
+    esac
+  done
+
+  if [[ -f "$TEST_CORE_FILE" ]]
+  then
+    rm "$TEST_CORE_FILE"
+  fi
+
+  cd "$PERSONAL_PROJECTS_DIR/CoreFile"
+  if [[ $INSTALL == "yes" ]]
+  then
+    bundle install
+  fi
+  bex test.rb
+}
+
+function test-setup-one() {
+  echo "foo"
+}
+
+
+. $HOME/.asdf/asdf.sh
+. $HOME/.asdf/completions/asdf.bash
+
+export JRUBY_OPTS="-X-C -J-client -J-XX:+TieredCompilation -J-XX:TieredStopAtLevel=1 -Xcompile.invokedynamic=false --debug"
+
+function parse-git-branch() {
+	git branch 2> /dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/ (\1)/'
+}
+export PS1="\[\033[32m\]\w\[\033[33m\]\$(parse-git-branch)\[\033[00m\] $ "
+
+### Kanye integration tests
+function show-user() { 
+  USER_EMAIL="zack.botkin+1@erisx.com"
+  IDM_ID="kanyes_idm_id"
+  QUERY_FILE="$MONGO_SCRIPT_DIR/user.js"
+  if [[ -f "$QUERY_FILE" ]]
+  then
+    rm "$QUERY_FILE"
+  fi
+  echo "
+  use erisx_dev
+  db.user.find({\"idm_id\" : \"$IDM_ID\"}).pretty()
+  " >> $QUERY_FILE
+  mongo-dev "$QUERY_FILE"
+}
+function show-member() { 
+  MEMBER_NAME="KanyeBest"
+  QUERY_FILE="$MONGO_SCRIPT_DIR/member.js"
+  if [[ -f "$QUERY_FILE" ]]
+  then
+    rm "$QUERY_FILE"
+  fi
+  echo "
+  use erisx_dev
+  db.member.find({\"name\" : \"$MEMBER_NAME\"}).pretty()
+  " >> $QUERY_FILE
+  mongo-dev "$QUERY_FILE"
+}
+function cleanup-kanye() {
+  MEMBER_NAME="KanyeBest"
+  SPOTS_ACCOUNT_ID="kanyes_spots_account"
+  SPOTS_ACCOUNT_CODE="BeautifulDark"
+  FUTURES_ACCOUNT_ID="kanyes_futures_account"
+  FUTURES_ACCOUNT_CODE="TwistedFantasy"
+  IDM_ID="kanyes_idm_id"
+  QUERY_FILE="$MONGO_SCRIPT_DIR/cleanup-member.js"
+  if [[ -f "$QUERY_FILE" ]]
+  then
+    rm "$QUERY_FILE"
+  fi
+  echo "
+  use erisx_dev
+  db.member.deleteMany({\"name\": \"$MEMBER_NAME\"})
+  db.ledger_account.deleteMany({\"account_id\": \"$SPOTS_ACCOUNT_ID\"})
+  db.ledger_account.deleteMany({\"account_code\": \"$SPOTS_ACCOUNT_CODE\"})
+  db.ledger_account.deleteMany({\"account_id\": \"$FUTURES_ACCOUNT_ID\"})
+  db.ledger_account.deleteMany({\"account_code\": \"$FUTURES_ACCOUNT_CODE\"})
+  db.user.deleteMany({\"idm_id\" : \"$IDM_ID\"})
+  " >> $QUERY_FILE
+  mongo-dev "$QUERY_FILE" 
+}
+
+function show-account() { 
+  SPOT_ACCOUNT_CODE="BeautifulDark"
+  FUTURES_ACCOUNT_CODE="TwistedFantasy"
+  QUERY_FILE="$MONGO_SCRIPT_DIR/account.js"
+  if [[ -f "$QUERY_FILE" ]]
+  then
+    rm "$QUERY_FILE"
+  fi
+  echo "
+  use erisx_dev
+  db.ledger_account.find({\"account_code\" : \"$SPOT_ACCOUNT_CODE\"}).pretty()
+  db.ledger_account.find({\"account_code\" : \"$FUTURES_ACCOUNT_CODE\"}).pretty()
+  " >> $QUERY_FILE
+  mongo-dev "$QUERY_FILE"
+}
+function show-ledger-journal() { 
+  SPOTS_ACCOUNT_ID="kanyes_spots_account"
+  QUERY_FILE="$MONGO_SCRIPT_DIR/journal.js"
+  if [[ -f "$QUERY_FILE" ]]
+  then
+    rm "$QUERY_FILE"
+  fi
+  echo "
+  use erisx_dev
+  db.ledger_journal.find({\"account_id\" : \"$SPOTS_ACCOUNT_ID\"}).pretty()
+  " >> $QUERY_FILE
+  mongo-dev "$QUERY_FILE"
+}
+
+
+## onboarding queries probably delete these
+## or keep them around for examples
+DEFAULT_IDM_ID="7ddaf67397c54716936e93658233e9d4"
+function mongo-dev-set-compliance-answered() {
+  IDM_ID="$DEFAULT_IDM_ID"
+  VALUE=
+  while [[ "$1" != "" ]]
+  do
+    case $1 in
+      -i | --idm-id)
+      IDM_ID="$2"
+      shift
+      shift
+      ;;
+      -v | --value)
+      VALUE="$2"
+      shift
+      shift
+      ;;
+    esac
+  done
+
+  QUERY_FILE="$MONGO_SCRIPT_DIR/test.js"
+  if [[ -f "$QUERY_FILE" ]]
+  then
+    rm "$QUERY_FILE"
+  fi
+  
+  if [[ $VALUE == "" ]]
+  then
+    echo "
+    use erisx_dev
+    db.user.updateOne({'idm_id' : '$IDM_ID'}, { '\$unset' : { 'compliance_accepted_time' : 1}})
+    " >> $QUERY_FILE
+  else
+    echo "
+    use erisx_dev
+    db.user.updateOne({'idm_id' : {'\$eq' : '$IDM_ID'}}, { '\$set' : { 'compliance_accepted_time' : new Date($VALUE)}})
+    " >> $QUERY_FILE
+  fi
+  mongo-dev "$QUERY_FILE"
+}
+alias reset-compliance='mongo-dev-set-compliance-answered'
+
+function mongo-dev-reset() {
+  IDM_ID="$DEFAULT_IDM_ID"
+  USER_STATE="kyc"
+  IDM_STATE="id_images"
+  while [[ "$1" != "" ]]
+  do
+    case $1 in
+      -i | --idm-id)
+      IDM_ID="$2"
+      shift
+      shift
+      ;;
+      --user-state)
+      USER_STATE="$2"
+      shift
+      shift
+      ;;
+      --idm-state)
+      IDM_STATE="$2"
+      shift
+      shift
+      ;;
+    esac
+  done
+
+  QUERY_FILE="$MONGO_SCRIPT_DIR/testone.js"
+  if [[ -f "$QUERY_FILE" ]]
+  then
+    rm "$QUERY_FILE"
+  fi
+  echo "
+  use erisx_dev
+  db.user.updateOne({'idm_id' : {'\$eq' : '$IDM_ID'}}, { '\$set' : { 'state' : '$USER_STATE'}})
+  db.idm_app.updateOne({'idm_id' : {'\$eq' : '$IDM_ID'}}, { '\$set' : { 'state' : '$IDM_STATE'}})
+  " >> $QUERY_FILE
+
+  mongo-dev "$QUERY_FILE"
+}
+alias reset-state='mongo-dev-reset'
+
+
+function mongo-dev-read-user() {
+  EMAIL="zack.botkin+1@erisx.com"
+  ATTRIBUTE=
+  while [[ "$1" != "" ]]
+  do
+    case $1 in
+      -e | --email)
+      EMAIL="$2"
+      shift
+      shift
+      ;;
+      -a | --attribute)
+      ATTRIBUTE="$2"
+      shift
+      shift
+      ;;
+    esac
+  done
+
+  QUERY_FILE="$MONGO_SCRIPT_DIR/testtwo.js"
+  if [[ -f "$QUERY_FILE" ]]
+  then
+    rm "$QUERY_FILE"
+  fi
+  if [[ $ATTRIBUTE == "" ]]
+  then
+    echo "
+    use erisx_dev
+    db.user.find({\"email\" : \"$EMAIL\"}).pretty()
+    " >> $QUERY_FILE
+  else
+    echo "
+    use erisx_dev
+    db.user.find({\"email\" : \"$EMAIL\"})[0][\"$ATTRIBUTE\"]
+    " >> $QUERY_FILE
+  fi
+
+  mongo-dev "$QUERY_FILE"
+}
+alias read-user='mongo-dev-read-user'
+
+function mongo-dev-read-idm() {
+  IDM_ID="$DEFAULT_IDM_ID"
+  ATTRIBUTE=
+  while [[ "$1" != "" ]]
+  do
+    case $1 in
+      -i | --idm-id)
+      IDM_ID="$2"
+      shift
+      shift
+      ;;
+      -a | --attribute)
+      ATTRIBUTE="$2"
+      shift
+      shift
+      ;;
+    esac
+  done
+
+  QUERY_FILE="$MONGO_SCRIPT_DIR/testthree.js"
+  if [[ -f "$QUERY_FILE" ]]
+  then
+    rm "$QUERY_FILE"
+  fi
+  if [[ $ATTRIBUTE == "" ]]
+  then
+    echo "
+    use erisx_dev
+    db.idm_app.find({\"idm_id\" : \"$IDM_ID\"}).pretty()
+    " >> $QUERY_FILE
+  else
+    echo "
+    use erisx_dev
+    db.idm_app.find({\"idm_id\" : \"$IDM_ID\"})[0][\"$ATTRIBUTE\"]
+    " >> $QUERY_FILE
+  fi
+
+  mongo-dev "$QUERY_FILE"
+}
+alias read-idm='mongo-dev-read-idm'
+
+function mongo-tst() {
+	mongo --host tst-va-mongodb-a1.test.com:27017 \
+	--username zack.botkin@erisx.com \
+	--password "<UPDATE>"
+}
