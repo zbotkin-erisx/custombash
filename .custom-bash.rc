@@ -14,7 +14,7 @@ CALENDAR_LINK="https://calendar.google.com/calendar"
 GITHUB_LINK="https://github.com/ErisExchange"
 JIRA_LINK="https://erisdigital.atlassian.net"
 MARGIN_EXAMPLES_LINK="https://docs.google.com/spreadsheets/d/12yQ48N4h4TL2Q_Dk5fh4U5cXGU1iSGVdBxMDd9ZRi5E/edit"
-SPRINT_LINK="https://erisdigital.atlassian.net/secure/RapidBoard.jspa?rapidView=6"
+SPRINT_LINK="https://erisdigital.atlassian.net/secure/RapidBoard.jspa?rapidView=86&projectKey=CO"
 STANDUP_NOTES_LINK="https://docs.google.com/document/d/1Dh8jLhSfk-cc4bASR8-90lQu4-C4EjGLhGb-3mSkIuA/edit#heading=h.butnv2blwar7"
 STANDUP_MEETING_LINK="https://meet.google.com/mxj-shyr-brz?authuser=0"
 
@@ -486,7 +486,12 @@ function margin-examples() {
 }
 
 function sprint() {
-  browser-shortcut "$SPRINT_LINK"
+  if [[ -z $1 ]]
+  then
+    browser-shortcut "$SPRINT_LINK"
+  else
+    browser-shortcut "$SPRINT_LINK&search=$1"
+  fi
 }
 
 ## work in progress
