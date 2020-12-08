@@ -33,60 +33,60 @@ alias re-soruce="re-source"
 alias re-souce="re-source"
 
 function dev-vpn() {
-    sudo openvpn --config $VPN_DIR/dev.ovpn
+  sudo openvpn --config $VPN_DIR/dev.ovpn
 }
 function test-vpn() {
-    sudo openvpn --config $VPN_DIR/test.ovpn
+  sudo openvpn --config $VPN_DIR/test.ovpn
 }
 function nr-vpn() {
-    sudo openvpn --config $VPN_DIR/nr.ovpn
+  sudo openvpn --config $VPN_DIR/nr.ovpn
 }
 function prod-vpn() {
-    sudo openvpn --config $VPN_DIR/prod.ovpn
+  sudo openvpn --config $VPN_DIR/prod.ovpn
 }
 function marketops-vpn() {
-    sudo openvpn --config $VPN_DIR/marketops.ovpn
+  sudo openvpn --config $VPN_DIR/marketops.ovpn
 }
 
 function note() {
-    if [ -z $1 ];
-    then
-        currentDate=`date +"%Y%m%d"`
-        currentFile="$NOTES_DIR/$currentDate.txt"
-        touch $currentFile
-        vim $currentFile
+  if [[ -z $1 ]]
+  then
+    currentDate=`date +"%Y%m%d"`
+    currentFile="$NOTES_DIR/$currentDate.txt"
+    touch $currentFile
+    vim $currentFile
+  else
+    filename="$NOTES_DIR/$1.txt"
+    if [ -f "$filename" ]; then
+      vim $filename
     else
-        filename="$NOTES_DIR/$1.txt"
-        if [ -f "$filename" ]; then
-            vim $filename
-        else
-            echo "no such file \"$filename\""
-        fi
+      echo "no such file \"$filename\""
     fi
+  fi
 }
 
 function notes() {
-    if [ -z $1 ]; then
-        note
-    else
-        note $1
-    fi
+  if [ -z $1 ]; then
+    note
+  else
+    note $1
+  fi
 }
 
 function start-all() {
-    ~/bin/mongo-start
-    ~/bin/rabbit-start
+  ~/bin/mongo-start
+  ~/bin/rabbit-start
 }
 
 function stop-all() {
-    ~/bin/mongo-stop
-    ~/bin/rabbit-stop
+  ~/bin/mongo-stop
+  ~/bin/rabbit-stop
 }
 
 function source-all-envs() {
-    . ~/bin/env-auth0-dev-test
-    . ~/bin/env-ftp-local
-    . ~/bin/env-mongo-dev
+  . ~/bin/env-auth0-dev-test
+  . ~/bin/env-ftp-local
+  . ~/bin/env-mongo-dev
 }
 function unsource-all-envs() {
   . ~/bin/unenv-auth0
@@ -101,17 +101,17 @@ function rabbit-dev() {
 function mongo-dev() {
   if [[ -z $1 ]]
   then
-      mongo --host dev-va-mongodb-a1.erisx:27017 \
-      --username dev_svc \
-      --password zakishoodieman \
-      --authenticationDatabase admin
+    mongo --host dev-va-mongodb-a1.erisx:27017 \
+    --username dev_svc \
+    --password zakishoodieman \
+    --authenticationDatabase admin
   else
     if [[ -f "$1" ]]
     then
-        mongo --host dev-va-mongodb-a1.erisx:27017 \
-        --username dev_svc \
-        --password zakishoodieman \
-        --authenticationDatabase admin < "$1"
+      mongo --host dev-va-mongodb-a1.erisx:27017 \
+      --username dev_svc \
+      --password zakishoodieman \
+      --authenticationDatabase admin < "$1"
     else
       echo "Query file $1 does not exist!"
     fi
@@ -184,7 +184,6 @@ function run-clearing-service() {
     fi
     ./bin/clearing_system.rb
   fi
-
 }
 
 function run-clearing-admin-frontend() {
@@ -221,21 +220,21 @@ function run-clearing-admin-frontend() {
     echo "$REPO_DIR does not exist. Create it with mono-repo"
   else
     cd "$PROJECTS_DIR/$REPO_NAME/ClearingAdminUI"
-      # bash ~/.asdf/plugins/nodejs/bin/import-release-team-keyring
+    # bash ~/.asdf/plugins/nodejs/bin/import-release-team-keyring
     if [[ $JENKINS_BUILD == "yes" ]]
     then
-        .jenkins/build
+      .jenkins/build
     fi
     if [[ $YARN_BUILD == "yes" ]]
     then
-        yarn run build:client
+      yarn run build:client
     fi
-      yarn run start:server
+    yarn run start:server
   fi
-
 }
 
 function run-clearing-portal-frontend() {
+
   REPO_NAME=
   JENKINS_BUILD="no"
   YARN_BUILD="no"
@@ -267,16 +266,16 @@ function run-clearing-portal-frontend() {
     echo "$REPO_DIR does not exist. Create it with mono-repo"
   else
     cd "$PROJECTS_DIR/$REPO_NAME/ClearingPortal"
-      # bash ~/.asdf/plugins/nodejs/bin/import-release-team-keyring
+    # bash ~/.asdf/plugins/nodejs/bin/import-release-team-keyring
     if [[ $JENKINS_BUILD == "yes" ]]
     then
-        .jenkins/build
+      .jenkins/build
     fi
     if [[ $YARN_BUILD == "yes" ]]
     then
-        yarn run build:client
+      yarn run build:client
     fi
-      yarn run start:server
+    yarn run start:server
   fi
 }
 
@@ -328,7 +327,7 @@ function run-statement-generator() {
   then
     echo "$REPO_DIR does not exist. Create it with mono-repo"
   else
-      cd "$REPO_DIR/StatementGenerator"
+    cd "$REPO_DIR/StatementGenerator"
     if [[ $INSTALL == "yes" ]]
     then
       bundle install
@@ -343,42 +342,41 @@ function run-statement-generator() {
     EXEC_TEXT="load './lib/tasks/$TASK_NAME.rb';\
     task=$TASK_MODULE_NAME::Task.new(date: \"$TASK_DATE\");\
     task.run"
-      bundle exec pry --exec "$EXEC_TEXT"
+    bundle exec pry --exec "$EXEC_TEXT"
   fi
-
 }
 
 ## make this more into a function later i guess
 function nomad-stuff() {
-    export NOMAD_ADDR=http://tst-va-nomad-a1:4646
-    nomad status
-    nomad job status statementgenerator
-    nomad alloc logs 34c82290
-    nomad alloc logs -f 34c82290
-    nomad alloc logs 34c82290 | grep Ping 
-    nomad alloc logs 34c82290 | grep 1604069712
-    nomad status
-    export NOMAD_ADDR=http://tst-va-nomad-a1:4646
-    nomad status
-    nomad job status tradeapi
-    nomad alloc logs a53d07a6
-    nomad alloc logs a53d07a6 | grep -v INFO
-    nomad alloc logs -f a53d07a6
-    nomad alloc logs -f a53d07a6 | grep WARN
+  export NOMAD_ADDR=http://tst-va-nomad-a1:4646
+  nomad status
+  nomad job status statementgenerator
+  nomad alloc logs 34c82290
+  nomad alloc logs -f 34c82290
+  nomad alloc logs 34c82290 | grep Ping 
+  nomad alloc logs 34c82290 | grep 1604069712
+  nomad status
+  export NOMAD_ADDR=http://tst-va-nomad-a1:4646
+  nomad status
+  nomad job status tradeapi
+  nomad alloc logs a53d07a6
+  nomad alloc logs a53d07a6 | grep -v INFO
+  nomad alloc logs -f a53d07a6
+  nomad alloc logs -f a53d07a6 | grep WARN
 }
 
 #
 #
-#    various 'book-marked' pages for command line access
+#  various 'book-marked' pages for command line access
 #
 #
 
 function email() {
-    browser-shortcut "$EMAIL_LINK"
+  browser-shortcut "$EMAIL_LINK"
 }
 
 function calendar() {
-    browser-shortcut "$CALENDAR_LINK"
+  browser-shortcut "$CALENDAR_LINK"
 }
 
 function standup() {
@@ -386,7 +384,7 @@ function standup() {
 }
 
 function standup-notes() {
-    browser-shortcut "$STANDUP_NOTES_LINK"
+  browser-shortcut "$STANDUP_NOTES_LINK"
 }
 
 function github() {
@@ -444,23 +442,23 @@ function github() {
     BRANCH_NAME=
   fi
 
-    if [[ $PROJECT_NAME == "" ]]
+  if [[ $PROJECT_NAME == "" ]]
   then
-        echo "No args"
-        browser-shortcut "$GITHUB_LINK"
-    else
+    echo "No args"
+    browser-shortcut "$GITHUB_LINK"
+  else
     if [[ $BRANCH_NAME ]]
     then
       browser-shortcut "$GITHUB_LINK/$PROJECT_NAME/tree/$BRANCH_NAME"
     else
-          browser-shortcut "$GITHUB_LINK/$PROJECT_NAME"
+      browser-shortcut "$GITHUB_LINK/$PROJECT_NAME"
     fi
-    fi
+  fi
 }
 alias gh="github"
 
 function local-clearing-admin() {
-    browser-shortcut "http://localhost:3001"
+  browser-shortcut "http://localhost:3001"
 }
 function local-clearing-portal() {
   if [[ -z "$1" ]]
@@ -472,17 +470,17 @@ function local-clearing-portal() {
 }
 
 function jira() {
-    if [[ -z $1 ]]
+  if [[ -z $1 ]]
   then
-        echo "No args"
-        browser-shortcut "$JIRA_LINK"
-    else
-        browser-shortcut "$JIRA_LINK/browse/CO-$1"
-    fi
+    echo "No args"
+    browser-shortcut "$JIRA_LINK"
+  else
+    browser-shortcut "$JIRA_LINK/browse/CO-$1"
+  fi
 }
 
 function margin-examples() {
-    browser-shortcut "$MARGIN_EXAMPLES_LINK"
+  browser-shortcut "$MARGIN_EXAMPLES_LINK"
 }
 
 function sprint() {
@@ -497,11 +495,11 @@ function sprint() {
 ## work in progress
 OPEN_ISSUES_FILE="$ISSUES_DIR/open-issues.txt" 
 function open-issues() {
-    cat $OPEN_ISSUES_FILE
+  cat $OPEN_ISSUES_FILE
 }
 
 function current-issue() {
-    jira `open-issues`
+  jira `open-issues`
 }
 
 function find-replace() {
@@ -571,7 +569,6 @@ function mono-repo() {
     fi
     mono-helper $BRANCH_NAME $REPO_NAME $BASE_BRANCH
   fi
-
 }
 
 function mono-helper() {
@@ -599,21 +596,21 @@ function mono-helper() {
 }
 
 function mono-helper-dos() {
-    cd "$1"
-    git clone "git@github.com:ErisExchange/$2.git"
-    cd "$1/$2"
-    git pull origin "$3"
-    git checkout -b "$4"
-    cd "$1"
+  cd "$1"
+  git clone "git@github.com:ErisExchange/$2.git"
+  cd "$1/$2"
+  git pull origin "$3"
+  git checkout -b "$4"
+  cd "$1"
 }
 
 function projects () {
-    if [ -z $1 ]
+  if [ -z $1 ]
   then
-        cd "$PROJECTS_DIR"
-    else
-        cd "$PROJECTS_DIR/$1"
-    fi
+    cd "$PROJECTS_DIR"
+  else
+    cd "$PROJECTS_DIR/$1"
+  fi
 }
 
 function quick-test() {
@@ -703,7 +700,7 @@ function core-files() {
 export JRUBY_OPTS="-X-C -J-client -J-XX:+TieredCompilation -J-XX:TieredStopAtLevel=1 -Xcompile.invokedynamic=false --debug"
 
 function parse-git-branch() {
-    git branch 2> /dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/ (\1)/'
+  git branch 2> /dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/ (\1)/'
 }
 export PS1="\[\033[32m\]\w\[\033[33m\]\$(parse-git-branch)\[\033[00m\] $ "
 
@@ -957,7 +954,7 @@ function mongo-dev-read-idm() {
 alias read-idm='mongo-dev-read-idm'
 
 function mongo-tst() {
-    mongo --host tst-va-mongodb-a1.test.com:27017 \
-    --username zack.botkin@erisx.com \
-    --password "<UPDATE>"
+  mongo --host tst-va-mongodb-a1.test.com:27017 \
+  --username zack.botkin@erisx.com \
+  --password "<UPDATE>"
 }
